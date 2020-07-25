@@ -6,7 +6,9 @@ module Network.GoogleAPI.GoogleIdTokenVerifier
     , ClientId
     , decodeGoogleIdTokenString
     , verifyGoogleIdTokenJWT
+    , verifyGoogleIdTokenString
     , verifyGoogleIdTokenJWTIO
+    , verifyGoogleIdTokenStringIO
     ) where
 
 import           Prelude                                hiding (exp)
@@ -71,12 +73,22 @@ verifyGoogleIdTokenJWT posixTime jwkset clientId signedJwt = do
     verifyGoogleIdToken posixTime clientId googleIdToken
     decodeVerifiedJWT verifiedBS
 
+-- |Decodes JWT and verifies JWT and GoogleIdToken and returns payloads.
+verifyGoogleIdTokenString :: (FromJSON a, MonadThrow m) => POSIXTime -> JWKSet -> ClientId -> GoogleIdTokenString -> m a
+verifyGoogleIdTokenString posixTime jwkset clientId googleIdTokenString =
+    decodeGoogleIdTokenString googleIdTokenString >>= verifyGoogleIdTokenJWT posixTime jwkset clientId
+
 -- |Verifies JWT and GoogleIdToken and returns payloads.
 verifyGoogleIdTokenJWTIO :: (FromJSON a, MonadThrow m, MonadIO m) => ClientId -> GoogleIdTokenJWT -> m a
 verifyGoogleIdTokenJWTIO clientId signedJwt = do
     jwtSet <- requestGoogleAPIJwkSet
     posixTime <- liftIO getPOSIXTime
     verifyGoogleIdTokenJWT posixTime jwtSet clientId signedJwt
+
+-- |Decodes JWT and verifies JWT and GoogleIdToken and returns payloads.
+verifyGoogleIdTokenStringIO :: (FromJSON a, MonadThrow m, MonadIO m) => ClientId -> GoogleIdTokenString -> m a
+verifyGoogleIdTokenStringIO clientId googleIdTokenString =
+    decodeGoogleIdTokenString googleIdTokenString >>= verifyGoogleIdTokenJWTIO clientId
 
 requestGoogleAPIJwkSet :: MonadIO m => m JWKSet
 requestGoogleAPIJwkSet = JWKSet . keys . responseBody <$> runReq defaultHttpConfig jwkRequest
